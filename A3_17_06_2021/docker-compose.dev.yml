@@ -1,0 +1,58 @@
+version: '3.4'
+
+services:
+  mongo-ui:
+    image: gtldhawalgandhi/dbgate:dev
+    container_name: mongo_ui
+    depends_on: 
+      - 'mongo-db'
+    ports:
+      - 3009:3000
+    networks:
+      - docker_app_network
+
+  mongo-db:
+    image: mongo:4.4.6-bionic
+    container_name: mongo_db
+    restart: always
+    environment: 
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+      MONGO_INITDB_USERNAME: ${MONGO_INITDB_USERNAME}
+      MONGO_INITDB_PASSWORD: ${MONGO_INITDB_PASSWORD}
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data:/data/db
+      - ./backend/scripts/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
+    networks:
+      - docker_app_network
+
+  node-app:
+    image: nodeappimage-dev:v1
+    container_name: ${NODE_APP_CONTAINER_NAME}
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile.dev
+    environment:
+      NODE_ENV: development
+      PORT: ${NODE_APP_CONTAINER_NAME_PORT}
+      DB: ${MONGODB_URL}
+    depends_on: 
+      - 'mongo-ui'
+    ports:
+      - 10000:${NODE_APP_CONTAINER_NAME_PORT}
+      - 9229:9229
+    volumes:
+      - ./backend:/work:rw
+      - /work/node_modules
+    networks:
+      - docker_app_network
+    command: ["yarn", "dev:run"]
+
+volumes:
+  mongodb_data:
+
+networks:
+  docker_app_network:
